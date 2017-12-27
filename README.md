@@ -9,7 +9,7 @@ DuitTorrent - simple bittorrent client developed as demo for duit, the Developer
 # Todo
 
 - store state, and restore state on open. write config to $HOME/lib/duit/torrent/config, write torrents to $HOME/lib/duit/torrent/torrents
-- show rates and eta per download
+- show rates and eta per download, in a gridlist UI widget (that doesn't exist yet)
 - allow setting per file whether you want to download it, and show progress per file
 - when showing readable sizes, pick one and stick to it.  eg 2000k/3m looks weird
 - show where files are saved, let user change location?

@@ -4,6 +4,7 @@ DuitTorrent is a simple bittorrent client developed as demo for duit, the Develo
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	"log"
@@ -44,7 +45,7 @@ func torrentString(t *torrent.Torrent) string {
 	name := t.String()
 	i := t.Info()
 	if i == nil {
-		return name
+		return "fetching metainfo..."
 	}
 	// xxx: show up/down speed, eta
 	var (
@@ -242,6 +243,18 @@ func parseRate(s string) (rate.Limit, error) {
 }
 
 func main() {
+	log.SetFlags(0)
+	flag.Usage = func() {
+		log.Println("usage: duittorrent")
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+	args := flag.Args()
+	if len(args) == 0 {
+		flag.Usage()
+		os.Exit(2)
+	}
+
 	var err error
 	config = &torrent.Config{
 		DHTConfig: dht.ServerConfig{
@@ -275,7 +288,6 @@ func main() {
 			}
 
 			r.Layout = true
-			log.Printf("toggle activeness of selected torrent %v\n", t)
 			h := t.InfoHash()
 			nv := !torrentWant[h]
 			torrentWant[h] = nv
@@ -304,7 +316,6 @@ func main() {
 			i := l[0]
 			lv := list.Values[i]
 			t := lv.Value.(*torrent.Torrent)
-			log.Printf("remove selected torrent %v\n", t)
 			t.Drop()
 			list.Values = append(list.Values[:i], list.Values[i+1:]...)
 			updateButtons(nil)
@@ -322,7 +333,6 @@ func main() {
 				r.Redraw = true
 				t, err := client.AddMagnet(uri)
 				if err != nil {
-					log.Printf("adding magnet: %s\n", err)
 					return
 				}
 				torrentWant[t.InfoHash()] = true
@@ -473,7 +483,6 @@ func main() {
 				continue
 			}
 
-			log.Printf("have info\n")
 			if torrentWant[t.InfoHash()] {
 				t.DownloadAll()
 			}
