@@ -107,9 +107,9 @@ func updateDetails(t *torrent.Torrent) {
 
 	_box := func(top int, ui duit.UI) *duit.Box {
 		return &duit.Box{
-			Padding:  duit.Space{top, 0, 0, 0},
-			MaxWidth: -1,
-			Kids:     duit.NewKids(ui),
+			Padding: duit.Space{top, 0, 0, 0},
+			Width:   -1,
+			Kids:    duit.NewKids(ui),
 		}
 	}
 	box := func(ui duit.UI) *duit.Box {
@@ -130,8 +130,8 @@ func updateDetails(t *torrent.Torrent) {
 				{2, 4, 2, 0},
 				{2, 0, 2, 4},
 			},
-			MaxWidth: -1,
-			Kids:     duit.NewKids(kids...),
+			Width: -1,
+			Kids:  duit.NewKids(kids...),
 		}
 	}
 
@@ -147,9 +147,9 @@ func updateDetails(t *torrent.Torrent) {
 			{2, 4, 2, 0},
 			{2, 0, 2, 4},
 		},
-		MaxWidth: -1,
-		Halign:   []duit.Halign{duit.HalignLeft, duit.HalignRight},
-		Kids:     duit.NewKids(fileUIs...),
+		Width:  -1,
+		Halign: []duit.Halign{duit.HalignLeft, duit.HalignRight},
+		Kids:   duit.NewKids(fileUIs...),
 	}
 	uis = append(uis,
 		box(&duit.Label{Text: "Files", Font: bold}),
@@ -176,8 +176,8 @@ func updateDetails(t *torrent.Torrent) {
 	})
 	for _, v := range announces {
 		announceUIs = append(announceUIs, &duit.Box{
-			MaxWidth: -1,
-			Kids:     duit.NewKids(&duit.Label{Text: v}),
+			Width: -1,
+			Kids:  duit.NewKids(&duit.Label{Text: v}),
 		})
 	}
 	uis = append(uis,
@@ -250,7 +250,7 @@ func main() {
 	}
 	flag.Parse()
 	args := flag.Args()
-	if len(args) == 0 {
+	if len(args) != 0 {
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -400,18 +400,18 @@ func main() {
 			toggleActive,
 			remove,
 			&duit.Box{
-				MaxWidth: 300,
-				Kids:     duit.NewKids(input),
+				Width: 300,
+				Kids:  duit.NewKids(input),
 			},
 			&duit.Label{Text: "max up kb/s:"},
 			&duit.Box{
-				MaxWidth: 80,
-				Kids:     duit.NewKids(maxUp),
+				Width: 80,
+				Kids:  duit.NewKids(maxUp),
 			},
 			&duit.Label{Text: "max down kb/s:"},
 			&duit.Box{
-				MaxWidth: 80,
-				Kids:     duit.NewKids(maxDown),
+				Width: 80,
+				Kids:  duit.NewKids(maxDown),
 			},
 		),
 	}
