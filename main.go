@@ -22,15 +22,45 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	ColStatus = iota
+	ColName
+	ColHave
+	ColTotal
+	ColETA
+	ColDownrate
+	ColUprate
+	NCol
+)
+
 var (
 	client  *torrent.Client
 	config  *torrent.Config
 	gotInfo chan *torrent.Torrent
 
-	list                 *duit.List
+	list                 *duit.Gridlist
 	toggleActive, remove *duit.Button
 	details              *duit.Box
 	bold                 *draw.Font
+
+	columnNames = []string{
+		"status",
+		"name",
+		"completed",
+		"total",
+		"eta",
+		"downrate",
+		"uprate",
+	}
+	columnHalign = []duit.Halign{
+		duit.HalignLeft,
+		duit.HalignLeft,
+		duit.HalignRight,
+		duit.HalignRight,
+		duit.HalignRight,
+		duit.HalignRight,
+		duit.HalignRight,
+	}
 
 	torrentWant map[metainfo.Hash]bool // whether we currently want to download this torrent
 )
@@ -41,18 +71,23 @@ func check(err error, msg string) {
 	}
 }
 
-func torrentString(t *torrent.Torrent) string {
-	name := t.String()
-	i := t.Info()
-	if i == nil {
-		return "fetching metainfo..."
-	}
-	// xxx: show up/down speed, eta
-	var (
-		status    string
-		completed = "0"
-		total     = "?"
+func updateRow(row *duit.Gridrow) {
+	const (
+		ColStatus = iota
+		ColName
+		ColHave
+		ColTotal
+		ColETA
+		ColDownrate
+		ColUprate
+		NCol
 	)
+	t := row.Value.(*torrent.Torrent)
+
+	row.Values[ColName] = t.String()
+	i := t.Info()
+	// xxx: show up/down speed, eta
+	var status string
 	if i == nil {
 		status = "starting"
 	} else if t.Seeding() {
@@ -64,11 +99,16 @@ func torrentString(t *torrent.Torrent) string {
 	} else {
 		status = "downloading"
 	}
+	row.Values[ColStatus] = status
+
+	have := "0"
+	total := "?"
 	if i != nil {
-		completed = formatSize(t.BytesCompleted())
+		have = formatSize(t.BytesCompleted())
 		total = formatSize(t.BytesMissing() + t.BytesCompleted())
 	}
-	return fmt.Sprintf("%s %s/%s %s", name, completed, total, status)
+	row.Values[ColHave] = have
+	row.Values[ColTotal] = total
 }
 
 func formatSize(v int64) string {
@@ -81,10 +121,10 @@ func formatSize(v int64) string {
 	return fmt.Sprintf("%d%c", v, suffix[i])
 }
 
-func findListValue(t *torrent.Torrent) *duit.ListValue {
-	for _, lv := range list.Values {
-		if lv.Value == t {
-			return lv
+func findRow(t *torrent.Torrent) *duit.Gridrow {
+	for _, row := range list.Rows {
+		if row.Value == t {
+			return row
 		}
 	}
 	return nil
@@ -227,7 +267,7 @@ func selected() *torrent.Torrent {
 	}
 
 	i := l[0]
-	return list.Values[i].Value.(*torrent.Torrent)
+	return list.Rows[i].Value.(*torrent.Torrent)
 }
 
 func parseRate(s string) (rate.Limit, error) {
@@ -314,10 +354,10 @@ func main() {
 			}
 			r.Layout = true
 			i := l[0]
-			lv := list.Values[i]
-			t := lv.Value.(*torrent.Torrent)
+			row := list.Rows[i]
+			t := row.Value.(*torrent.Torrent)
 			t.Drop()
-			list.Values = append(list.Values[:i], list.Values[i+1:]...)
+			list.Rows = append(list.Rows[:i], list.Rows[i+1:]...)
 			updateButtons(nil)
 			updateDetails(nil)
 		},
@@ -335,16 +375,16 @@ func main() {
 				if err != nil {
 					return
 				}
-				torrentWant[t.InfoHash()] = true
-				nv := &duit.ListValue{
-					Label:    torrentString(t),
+				nrow := &duit.Gridrow{
+					Values:   make([]string, NCol),
 					Value:    t,
 					Selected: true,
 				}
-				for _, lv := range list.Values {
-					lv.Selected = false
+				updateRow(nrow)
+				for _, row := range list.Rows {
+					row.Selected = false
 				}
-				list.Values = append([]*duit.ListValue{nv}, list.Values...)
+				list.Rows = append([]*duit.Gridrow{nrow}, list.Rows...)
 				updateButtons(t)
 				updateDetails(t)
 				go func() {
@@ -415,12 +455,18 @@ func main() {
 			},
 		),
 	}
-	list = &duit.List{
+	list = &duit.Gridlist{
+		Halign: columnHalign,
+		Padding: duit.SpaceXY(6, 2),
+		Striped: true,
+		Header: duit.Gridrow{
+			Values: columnNames,
+		},
 		Changed: func(index int, r *duit.Result) {
-			lv := list.Values[index]
+			row := list.Rows[index]
 			var t *torrent.Torrent
-			if lv.Selected {
-				t = lv.Value.(*torrent.Torrent)
+			if row.Selected {
+				t = row.Value.(*torrent.Torrent)
 			}
 			updateButtons(t)
 			updateDetails(t)
@@ -469,8 +515,8 @@ func main() {
 			dui.Event(e)
 
 		case <-tick:
-			for _, lv := range list.Values {
-				lv.Label = torrentString(lv.Value.(*torrent.Torrent))
+			for _, row := range list.Rows {
+				updateRow(row)
 			}
 			t := selected()
 			updateDetails(t)
@@ -478,16 +524,16 @@ func main() {
 
 		case t := <-gotInfo:
 			// torrent could have been closed in the mean time
-			lv := findListValue(t)
-			if lv == nil {
+			row := findRow(t)
+			if row == nil {
 				continue
 			}
 
 			if torrentWant[t.InfoHash()] {
 				t.DownloadAll()
 			}
-			lv.Label = torrentString(t)
-			if lv.Selected {
+			updateRow(row)
+			if row.Selected {
 				updateButtons(t)
 				updateDetails(t)
 			}
