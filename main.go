@@ -137,7 +137,7 @@ func updateRow(row *duit.Gridrow, updateStats bool) {
 	mins := (secs % 3600) / 60
 	secs = secs % 60
 	if hours > 0 {
-		row.Values[ColETA] = fmt.Sprintf("%02dh%02dm", hours, mins)
+		row.Values[ColETA] = fmt.Sprintf("%dh%02dm", hours, mins)
 	} else if mins > 0 {
 		row.Values[ColETA] = fmt.Sprintf("%02dm%02ds", mins, secs)
 	} else {
@@ -486,7 +486,7 @@ func main() {
 	}
 	list = &duit.Gridlist{
 		Halign:  columnHalign,
-		Padding: duit.SpaceXY(6, 2),
+		Padding: duit.SpaceXY(2, 2),
 		Striped: true,
 		Header: duit.Gridrow{
 			Values: columnNames,
