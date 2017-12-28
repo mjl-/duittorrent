@@ -62,7 +62,10 @@ var (
 		duit.HalignRight,
 	}
 
-	torrentWant map[metainfo.Hash]bool // whether we currently want to download this torrent
+	torrentWant  map[metainfo.Hash]bool              // whether we currently want to download this torrent
+	torrentStats map[metainfo.Hash]torrent.ConnStats // previous stats, for calculating rate & eta
+
+	TickInterval = 2 * time.Second
 )
 
 func check(err error, msg string) {
@@ -71,7 +74,7 @@ func check(err error, msg string) {
 	}
 }
 
-func updateRow(row *duit.Gridrow) {
+func updateRow(row *duit.Gridrow, updateStats bool) {
 	const (
 		ColStatus = iota
 		ColName
@@ -86,7 +89,6 @@ func updateRow(row *duit.Gridrow) {
 
 	row.Values[ColName] = t.String()
 	i := t.Info()
-	// xxx: show up/down speed, eta
 	var status string
 	if i == nil {
 		status = "starting"
@@ -109,16 +111,42 @@ func updateRow(row *duit.Gridrow) {
 	}
 	row.Values[ColHave] = have
 	row.Values[ColTotal] = total
+
+	if !updateStats {
+		return
+	}
+	nstats := t.Stats().ConnStats
+	ostats, ok := torrentStats[t.InfoHash()]
+	torrentStats[t.InfoHash()] = nstats
+	if !ok {
+		return
+	}
+
+	downrate := (nstats.DataBytesRead - ostats.DataBytesRead) * int64(time.Second) / int64(TickInterval)
+	uprate := (nstats.BytesWritten - ostats.DataBytesWritten) * int64(time.Second) / int64(TickInterval)
+	row.Values[ColDownrate] = fmt.Sprintf("%dk", downrate/1024)
+	row.Values[ColUprate] = fmt.Sprintf("%dk", uprate/1024)
+
+	done := nstats.DataBytesRead - ostats.DataBytesRead
+	if done <= 0 {
+		row.Values[ColETA] = "∞"
+		return
+	}
+	secs := time.Duration(float64(TickInterval)*float64(t.BytesMissing())/float64(done)) / time.Second
+	hours := secs / 3600
+	mins := (secs % 3600) / 60
+	secs = secs % 60
+	if hours > 0 {
+		row.Values[ColETA] = fmt.Sprintf("%02dh%02dm", hours, mins)
+	} else if mins > 0 {
+		row.Values[ColETA] = fmt.Sprintf("%02dm%02ds", mins, secs)
+	} else {
+		row.Values[ColETA] = fmt.Sprintf("%02ds", secs)
+	}
 }
 
 func formatSize(v int64) string {
-	i := 0
-	for v >= 10000 {
-		v /= 1024
-		i++
-	}
-	const suffix = "bkmgtp"
-	return fmt.Sprintf("%d%c", v, suffix[i])
+	return fmt.Sprintf("%.1fm", float64(v)/(1024*1024))
 }
 
 func findRow(t *torrent.Torrent) *duit.Gridrow {
@@ -138,7 +166,7 @@ func updateDetails(t *torrent.Torrent) {
 	i := t.Info()
 	if i == nil {
 		details.Kids = duit.NewKids(&duit.Label{
-			Text: t.String(),
+			Text: "fetching metainfo...",
 		})
 		return
 	}
@@ -306,7 +334,7 @@ func main() {
 	client, err = torrent.NewClient(config)
 	check(err, "new torrent client")
 
-	dui, err := duit.NewDUI("torrent", "800x600")
+	dui, err := duit.NewDUI("torrent", "850x600")
 	check(err, "new dui")
 
 	bold = dui.Display.DefaultFont
@@ -317,6 +345,7 @@ func main() {
 
 	gotInfo = make(chan *torrent.Torrent)
 	torrentWant = map[metainfo.Hash]bool{}
+	torrentStats = map[metainfo.Hash]torrent.ConnStats{}
 
 	toggleActive = &duit.Button{
 		Text: "", // pause or start
@@ -380,7 +409,7 @@ func main() {
 					Value:    t,
 					Selected: true,
 				}
-				updateRow(nrow)
+				updateRow(nrow, false)
 				for _, row := range list.Rows {
 					row.Selected = false
 				}
@@ -456,7 +485,7 @@ func main() {
 		),
 	}
 	list = &duit.Gridlist{
-		Halign: columnHalign,
+		Halign:  columnHalign,
 		Padding: duit.SpaceXY(6, 2),
 		Striped: true,
 		Header: duit.Gridrow{
@@ -507,7 +536,7 @@ func main() {
 	updateDetails(nil)
 	dui.Render()
 
-	tick := time.Tick(3 * time.Second)
+	tick := time.Tick(TickInterval)
 
 	for {
 		select {
@@ -516,7 +545,7 @@ func main() {
 
 		case <-tick:
 			for _, row := range list.Rows {
-				updateRow(row)
+				updateRow(row, true)
 			}
 			t := selected()
 			updateDetails(t)
@@ -532,7 +561,7 @@ func main() {
 			if torrentWant[t.InfoHash()] {
 				t.DownloadAll()
 			}
-			updateRow(row)
+			updateRow(row, false)
 			if row.Selected {
 				updateButtons(t)
 				updateDetails(t)
