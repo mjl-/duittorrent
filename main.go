@@ -23,14 +23,14 @@ import (
 )
 
 const (
-	ColStatus = iota
-	ColName
-	ColHave
-	ColTotal
-	ColETA
-	ColDownrate
-	ColUprate
-	NCol
+	colStatus = iota
+	colName
+	colHave
+	colTotal
+	colETA
+	colDownrate
+	colUprate
+	nCol
 )
 
 var (
@@ -65,7 +65,7 @@ var (
 	torrentWant  map[metainfo.Hash]bool              // whether we currently want to download this torrent
 	torrentStats map[metainfo.Hash]torrent.ConnStats // previous stats, for calculating rate & eta
 
-	TickInterval = 2 * time.Second
+	tickInterval = 2 * time.Second
 )
 
 func check(err error, msg string) {
@@ -75,19 +75,9 @@ func check(err error, msg string) {
 }
 
 func updateRow(row *duit.Gridrow, updateStats bool) {
-	const (
-		ColStatus = iota
-		ColName
-		ColHave
-		ColTotal
-		ColETA
-		ColDownrate
-		ColUprate
-		NCol
-	)
 	t := row.Value.(*torrent.Torrent)
 
-	row.Values[ColName] = t.String()
+	row.Values[colName] = t.String()
 	i := t.Info()
 	var status string
 	if i == nil {
@@ -101,7 +91,7 @@ func updateRow(row *duit.Gridrow, updateStats bool) {
 	} else {
 		status = "downloading"
 	}
-	row.Values[ColStatus] = status
+	row.Values[colStatus] = status
 
 	have := "0"
 	total := "?"
@@ -109,8 +99,8 @@ func updateRow(row *duit.Gridrow, updateStats bool) {
 		have = formatSize(t.BytesCompleted())
 		total = formatSize(t.BytesMissing() + t.BytesCompleted())
 	}
-	row.Values[ColHave] = have
-	row.Values[ColTotal] = total
+	row.Values[colHave] = have
+	row.Values[colTotal] = total
 
 	if !updateStats {
 		return
@@ -122,26 +112,26 @@ func updateRow(row *duit.Gridrow, updateStats bool) {
 		return
 	}
 
-	downrate := (nstats.DataBytesRead - ostats.DataBytesRead) * int64(time.Second) / int64(TickInterval)
-	uprate := (nstats.BytesWritten - ostats.DataBytesWritten) * int64(time.Second) / int64(TickInterval)
-	row.Values[ColDownrate] = fmt.Sprintf("%dk", downrate/1024)
-	row.Values[ColUprate] = fmt.Sprintf("%dk", uprate/1024)
+	downrate := (nstats.DataBytesRead - ostats.DataBytesRead) * int64(time.Second) / int64(tickInterval)
+	uprate := (nstats.BytesWritten - ostats.DataBytesWritten) * int64(time.Second) / int64(tickInterval)
+	row.Values[colDownrate] = fmt.Sprintf("%dk", downrate/1024)
+	row.Values[colUprate] = fmt.Sprintf("%dk", uprate/1024)
 
 	done := nstats.DataBytesRead - ostats.DataBytesRead
 	if done <= 0 {
-		row.Values[ColETA] = "∞"
+		row.Values[colETA] = "∞"
 		return
 	}
-	secs := time.Duration(float64(TickInterval)*float64(t.BytesMissing())/float64(done)) / time.Second
+	secs := time.Duration(float64(tickInterval)*float64(t.BytesMissing())/float64(done)) / time.Second
 	hours := secs / 3600
 	mins := (secs % 3600) / 60
 	secs = secs % 60
 	if hours > 0 {
-		row.Values[ColETA] = fmt.Sprintf("%dh%02dm", hours, mins)
+		row.Values[colETA] = fmt.Sprintf("%dh%02dm", hours, mins)
 	} else if mins > 0 {
-		row.Values[ColETA] = fmt.Sprintf("%02dm%02ds", mins, secs)
+		row.Values[colETA] = fmt.Sprintf("%02dm%02ds", mins, secs)
 	} else {
-		row.Values[ColETA] = fmt.Sprintf("%02ds", secs)
+		row.Values[colETA] = fmt.Sprintf("%02ds", secs)
 	}
 }
 
@@ -175,7 +165,7 @@ func updateDetails(t *torrent.Torrent) {
 
 	_box := func(top int, ui duit.UI) *duit.Box {
 		return &duit.Box{
-			Padding: duit.Space{top, 0, 0, 0},
+			Padding: duit.Space{Top: top},
 			Width:   -1,
 			Kids:    duit.NewKids(ui),
 		}
@@ -195,8 +185,8 @@ func updateDetails(t *torrent.Torrent) {
 		return &duit.Grid{
 			Columns: 2,
 			Padding: []duit.Space{
-				{2, 4, 2, 0},
-				{2, 0, 2, 4},
+				{Top: 2, Right: 4, Bottom: 2, Left: 0},
+				{Top: 2, Right: 0, Bottom: 2, Left: 4},
 			},
 			Width: -1,
 			Kids:  duit.NewKids(kids...),
@@ -212,8 +202,8 @@ func updateDetails(t *torrent.Torrent) {
 	filesGrid := &duit.Grid{
 		Columns: 2,
 		Padding: []duit.Space{
-			{2, 4, 2, 0},
-			{2, 0, 2, 4},
+			{Top: 2, Right: 4, Bottom: 2, Left: 0},
+			{Top: 2, Right: 0, Bottom: 2, Left: 4},
 		},
 		Width:  -1,
 		Halign: []duit.Halign{duit.HalignLeft, duit.HalignRight},
@@ -405,7 +395,7 @@ func main() {
 					return
 				}
 				nrow := &duit.Gridrow{
-					Values:   make([]string, NCol),
+					Values:   make([]string, nCol),
 					Value:    t,
 					Selected: true,
 				}
@@ -536,7 +526,7 @@ func main() {
 	updateDetails(nil)
 	dui.Render()
 
-	tick := time.Tick(TickInterval)
+	tick := time.Tick(tickInterval)
 
 	for {
 		select {
