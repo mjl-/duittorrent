@@ -241,8 +241,8 @@ func updateDetails(t *torrent.Torrent) {
 	uis = append(uis,
 		titleBox(&duit.Label{Text: "Announces", Font: bold}),
 		&duit.Box{
-			ChildMargin: image.Pt(0, 4),
-			Kids:        duit.NewKids(announceUIs...),
+			Margin: image.Pt(0, 4),
+			Kids:   duit.NewKids(announceUIs...),
 		},
 	)
 
@@ -453,8 +453,8 @@ func main() {
 	}
 
 	bar := &duit.Box{
-		Padding:     duit.SpaceXY(6, 4),
-		ChildMargin: image.Pt(6, 4),
+		Padding: duit.SpaceXY(6, 4),
+		Margin:  image.Pt(6, 4),
 		Kids: duit.NewKids(
 			toggleActive,
 			remove,
@@ -493,7 +493,7 @@ func main() {
 		},
 	}
 	listBox := &duit.Scroll{
-		MaxHeight: -1,
+		Height: -1,
 		Child: &duit.Box{
 			Padding: duit.SpaceXY(6, 4),
 			Kids:    duit.NewKids(list),
@@ -503,8 +503,8 @@ func main() {
 		Padding: duit.SpaceXY(6, 4),
 	}
 	detailsBox := &duit.Scroll{
-		MaxHeight: -1,
-		Child:     details,
+		Height: -1,
+		Child:  details,
 	}
 	vertical := &duit.Vertical{
 		Split: func(height int) []int {
