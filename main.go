@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"9fans.net/go/draw"
-	"mjl/duit"
+	"github.com/mjl-/duit"
 
 	"github.com/anacrolix/dht"
 	"github.com/anacrolix/torrent"
@@ -327,9 +327,9 @@ func main() {
 	dui, err := duit.NewDUI("torrent", "850x600")
 	check(err, "new dui")
 
-	bold = dui.Display.DefaultFont
+	bold = dui.Env.Display.DefaultFont
 	if os.Getenv("boldfont") != "" {
-		bold, err = dui.Display.OpenFont(os.Getenv("boldfont"))
+		bold, err = dui.Env.Display.OpenFont(os.Getenv("boldfont"))
 		check(err, "open bold font")
 	}
 
@@ -389,7 +389,7 @@ func main() {
 				uri := input.Text
 				input.Text = ""
 				r.Consumed = true
-				r.Redraw = true
+				r.Draw = true
 				t, err := client.AddMagnet(uri)
 				if err != nil {
 					return
@@ -423,7 +423,7 @@ func main() {
 
 				v, err := parseRate(s)
 				if err != nil {
-					r.Redraw = true
+					r.Draw = true
 					log.Printf("bad rate: %s\n", err)
 					maxUp.Text = ""
 					return
@@ -442,7 +442,7 @@ func main() {
 
 				v, err := parseRate(s)
 				if err != nil {
-					r.Redraw = true
+					r.Draw = true
 					log.Printf("bad rate: %s\n", err)
 					maxDown.Text = ""
 					return
