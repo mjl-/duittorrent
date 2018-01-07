@@ -384,7 +384,7 @@ func main() {
 	var input *duit.Field
 	input = &duit.Field{
 		Placeholder: "magnet...",
-		Keys: func(m draw.Mouse, k rune, r *duit.Result) {
+		Keys: func(k rune, m draw.Mouse, r *duit.Result) {
 			if k == '\n' && len(input.Text) > 0 {
 				uri := input.Text
 				input.Text = ""
@@ -416,7 +416,7 @@ func main() {
 	var maxUp *duit.Field
 	maxUp = &duit.Field{
 		Text: "0",
-		Keys: func(m draw.Mouse, k rune, r *duit.Result) {
+		Keys: func(k rune, m draw.Mouse, r *duit.Result) {
 			if k == '\n' && len(maxUp.Text) > 0 {
 				s := maxUp.Text
 				r.Consumed = true
@@ -435,7 +435,7 @@ func main() {
 	var maxDown *duit.Field
 	maxDown = &duit.Field{
 		Text: "0",
-		Keys: func(m draw.Mouse, k rune, r *duit.Result) {
+		Keys: func(k rune, m draw.Mouse, r *duit.Result) {
 			if k == '\n' && len(maxDown.Text) > 0 {
 				s := maxDown.Text
 				r.Consumed = true
