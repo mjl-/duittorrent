@@ -38,6 +38,7 @@ var (
 	config  *torrent.Config
 	gotInfo chan *torrent.Torrent
 
+	dui                  *duit.DUI
 	list                 *duit.Gridlist
 	toggleActive, remove *duit.Button
 	details              *duit.Box
@@ -324,7 +325,7 @@ func main() {
 	client, err = torrent.NewClient(config)
 	check(err, "new torrent client")
 
-	dui, err := duit.NewDUI("torrent", "850x600")
+	dui, err = duit.NewDUI("torrent", "850x600")
 	check(err, "new dui")
 
 	bold = dui.Display.DefaultFont
@@ -339,14 +340,14 @@ func main() {
 
 	toggleActive = &duit.Button{
 		Text: "", // pause or start
-		Click: func(r *duit.Result) {
+		Click: func(r *duit.Event) {
 			t := selected()
 			if t == nil {
 				log.Println("should not happen: toggle while no torrent selected")
 				return
 			}
 
-			r.Layout = true
+			dui.MarkLayout(nil)
 			h := t.InfoHash()
 			nv := !torrentWant[h]
 			torrentWant[h] = nv
@@ -365,13 +366,13 @@ func main() {
 	}
 	remove = &duit.Button{
 		Text: "remove",
-		Click: func(r *duit.Result) {
+		Click: func(r *duit.Event) {
 			l := list.Selected()
 			if len(l) == 0 {
 				log.Println("should not happen: remove of torrent while none selected")
 				return
 			}
-			r.Layout = true
+			dui.MarkLayout(nil)
 			i := l[0]
 			row := list.Rows[i]
 			t := row.Value.(*torrent.Torrent)
@@ -384,14 +385,15 @@ func main() {
 	var input *duit.Field
 	input = &duit.Field{
 		Placeholder: "magnet...",
-		Keys: func(k rune, m draw.Mouse, r *duit.Result) {
+		Keys: func(k rune, m draw.Mouse, r *duit.Event) {
 			if k == '\n' && len(input.Text) > 0 {
 				uri := input.Text
 				input.Text = ""
 				r.Consumed = true
-				r.Draw = true
+				dui.MarkDraw(nil)
 				t, err := client.AddMagnet(uri)
 				if err != nil {
+					log.Printf("adding magnet: %s\n", err)
 					return
 				}
 				nrow := &duit.Gridrow{
@@ -416,14 +418,14 @@ func main() {
 	var maxUp *duit.Field
 	maxUp = &duit.Field{
 		Text: "0",
-		Keys: func(k rune, m draw.Mouse, r *duit.Result) {
+		Keys: func(k rune, m draw.Mouse, r *duit.Event) {
 			if k == '\n' && len(maxUp.Text) > 0 {
 				s := maxUp.Text
 				r.Consumed = true
 
 				v, err := parseRate(s)
 				if err != nil {
-					r.Draw = true
+					dui.MarkDraw(nil)
 					log.Printf("bad rate: %s\n", err)
 					maxUp.Text = ""
 					return
@@ -435,14 +437,14 @@ func main() {
 	var maxDown *duit.Field
 	maxDown = &duit.Field{
 		Text: "0",
-		Keys: func(k rune, m draw.Mouse, r *duit.Result) {
+		Keys: func(k rune, m draw.Mouse, r *duit.Event) {
 			if k == '\n' && len(maxDown.Text) > 0 {
 				s := maxDown.Text
 				r.Consumed = true
 
 				v, err := parseRate(s)
 				if err != nil {
-					r.Draw = true
+					dui.MarkDraw(nil)
 					log.Printf("bad rate: %s\n", err)
 					maxDown.Text = ""
 					return
@@ -481,7 +483,7 @@ func main() {
 		Header: duit.Gridrow{
 			Values: columnNames,
 		},
-		Changed: func(index int, r *duit.Result) {
+		Changed: func(index int, r *duit.Event) {
 			row := list.Rows[index]
 			var t *torrent.Torrent
 			if row.Selected {
@@ -489,22 +491,22 @@ func main() {
 			}
 			updateButtons(t)
 			updateDetails(t)
-			r.Layout = true
+			dui.MarkLayout(nil)
 		},
 	}
 	listBox := &duit.Scroll{
 		Height: -1,
-		Child: &duit.Box{
+		Kid: duit.Kid{UI: &duit.Box{
 			Padding: duit.SpaceXY(6, 4),
 			Kids:    duit.NewKids(list),
-		},
+		}},
 	}
 	details = &duit.Box{
 		Padding: duit.SpaceXY(6, 4),
 	}
 	detailsBox := &duit.Scroll{
 		Height: -1,
-		Child:  details,
+		Kid:    duit.Kid{UI: details},
 	}
 	vertical := &duit.Vertical{
 		Split: func(height int) []int {
@@ -515,7 +517,7 @@ func main() {
 			detailsBox,
 		),
 	}
-	dui.Top = &duit.Box{
+	dui.Top.UI = &duit.Box{
 		Kids: duit.NewKids(
 			bar,
 			vertical,
@@ -530,8 +532,11 @@ func main() {
 
 	for {
 		select {
-		case e := <-dui.Events:
-			dui.Event(e)
+		case e := <-dui.Inputs:
+			dui.Input(e)
+
+		case <-dui.Done:
+			return
 
 		case <-tick:
 			for _, row := range list.Rows {
