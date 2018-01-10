@@ -390,12 +390,12 @@ func main() {
 				uri := input.Text
 				input.Text = ""
 				r.Consumed = true
-				dui.MarkDraw(nil)
 				t, err := client.AddMagnet(uri)
 				if err != nil {
 					log.Printf("adding magnet: %s\n", err)
 					return
 				}
+				defer dui.MarkLayout(nil)
 				nrow := &duit.Gridrow{
 					Values:   make([]string, nCol),
 					Value:    t,
@@ -425,9 +425,9 @@ func main() {
 
 				v, err := parseRate(s)
 				if err != nil {
-					dui.MarkDraw(nil)
 					log.Printf("bad rate: %s\n", err)
 					maxUp.Text = ""
+					r.NeedDraw = true
 					return
 				}
 				config.UploadRateLimiter.SetLimit(v)
@@ -444,9 +444,9 @@ func main() {
 
 				v, err := parseRate(s)
 				if err != nil {
-					dui.MarkDraw(nil)
 					log.Printf("bad rate: %s\n", err)
 					maxDown.Text = ""
+					r.NeedDraw = true
 					return
 				}
 				config.DownloadRateLimiter.SetLimit(v)
@@ -484,6 +484,7 @@ func main() {
 			Values: columnNames,
 		},
 		Changed: func(index int, r *duit.Event) {
+			defer dui.MarkLayout(nil)
 			row := list.Rows[index]
 			var t *torrent.Torrent
 			if row.Selected {
@@ -491,7 +492,6 @@ func main() {
 			}
 			updateButtons(t)
 			updateDetails(t)
-			dui.MarkLayout(nil)
 		},
 	}
 	listBox := &duit.Scroll{
@@ -544,6 +544,8 @@ func main() {
 			}
 			t := selected()
 			updateDetails(t)
+			dui.MarkDraw(list)
+			dui.MarkDraw(details)
 			dui.Render()
 
 		case t := <-gotInfo:
@@ -561,6 +563,7 @@ func main() {
 				updateButtons(t)
 				updateDetails(t)
 			}
+			dui.MarkLayout(nil)
 			dui.Render()
 		}
 	}
