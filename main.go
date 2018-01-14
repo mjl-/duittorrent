@@ -508,7 +508,9 @@ func main() {
 		Height: -1,
 		Kid:    duit.Kid{UI: details},
 	}
-	vertical := &duit.Vertical{
+	vertical := &duit.Split{
+		Gutter: 1,
+		Vertical: true,
 		Split: func(height int) []int {
 			return []int{height / 2, height - height/2}
 		},
