@@ -340,7 +340,7 @@ func main() {
 
 	toggleActive = &duit.Button{
 		Text: "", // pause or start
-		Click: func(r *duit.Event) {
+		Click: func() (e duit.Event) {
 			t := selected()
 			if t == nil {
 				log.Println("should not happen: toggle while no torrent selected")
@@ -362,11 +362,12 @@ func main() {
 			} else {
 				t.CancelPieces(0, t.NumPieces())
 			}
+			return
 		},
 	}
 	remove = &duit.Button{
 		Text: "remove",
-		Click: func(r *duit.Event) {
+		Click: func() (e duit.Event) {
 			l := list.Selected()
 			if len(l) == 0 {
 				log.Println("should not happen: remove of torrent while none selected")
@@ -380,16 +381,17 @@ func main() {
 			list.Rows = append(list.Rows[:i], list.Rows[i+1:]...)
 			updateButtons(nil)
 			updateDetails(nil)
+			return
 		},
 	}
 	var input *duit.Field
 	input = &duit.Field{
 		Placeholder: "magnet...",
-		Keys: func(k rune, m draw.Mouse, r *duit.Event) {
+		Keys: func(k rune, m draw.Mouse) (e duit.Event) {
 			if k == '\n' && len(input.Text) > 0 {
 				uri := input.Text
 				input.Text = ""
-				r.Consumed = true
+				e.Consumed = true
 				t, err := client.AddMagnet(uri)
 				if err != nil {
 					log.Printf("adding magnet: %s\n", err)
@@ -413,44 +415,47 @@ func main() {
 					gotInfo <- t
 				}()
 			}
+			return
 		},
 	}
 	var maxUp *duit.Field
 	maxUp = &duit.Field{
 		Text: "0",
-		Keys: func(k rune, m draw.Mouse, r *duit.Event) {
+		Keys: func(k rune, m draw.Mouse) (e duit.Event) {
 			if k == '\n' && len(maxUp.Text) > 0 {
 				s := maxUp.Text
-				r.Consumed = true
+				e.Consumed = true
 
 				v, err := parseRate(s)
 				if err != nil {
 					log.Printf("bad rate: %s\n", err)
 					maxUp.Text = ""
-					r.NeedDraw = true
+					e.NeedDraw = true
 					return
 				}
 				config.UploadRateLimiter.SetLimit(v)
 			}
+			return
 		},
 	}
 	var maxDown *duit.Field
 	maxDown = &duit.Field{
 		Text: "0",
-		Keys: func(k rune, m draw.Mouse, r *duit.Event) {
+		Keys: func(k rune, m draw.Mouse) (e duit.Event) {
 			if k == '\n' && len(maxDown.Text) > 0 {
 				s := maxDown.Text
-				r.Consumed = true
+				e.Consumed = true
 
 				v, err := parseRate(s)
 				if err != nil {
 					log.Printf("bad rate: %s\n", err)
 					maxDown.Text = ""
-					r.NeedDraw = true
+					e.NeedDraw = true
 					return
 				}
 				config.DownloadRateLimiter.SetLimit(v)
 			}
+			return
 		},
 	}
 
@@ -480,10 +485,10 @@ func main() {
 		Halign:  columnHalign,
 		Padding: duit.SpaceXY(2, 2),
 		Striped: true,
-		Header: duit.Gridrow{
+		Header: &duit.Gridrow{
 			Values: columnNames,
 		},
-		Changed: func(index int, r *duit.Event) {
+		Changed: func(index int) (e duit.Event) {
 			defer dui.MarkLayout(nil)
 			row := list.Rows[index]
 			var t *torrent.Torrent
@@ -492,6 +497,7 @@ func main() {
 			}
 			updateButtons(t)
 			updateDetails(t)
+			return
 		},
 	}
 	listBox := &duit.Scroll{
@@ -509,7 +515,7 @@ func main() {
 		Kid:    duit.Kid{UI: details},
 	}
 	vertical := &duit.Split{
-		Gutter: 1,
+		Gutter:   1,
 		Vertical: true,
 		Split: func(height int) []int {
 			return []int{height / 2, height - height/2}
