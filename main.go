@@ -325,7 +325,7 @@ func main() {
 	client, err = torrent.NewClient(config)
 	check(err, "new torrent client")
 
-	dui, err = duit.NewDUI("torrent", "850x600")
+	dui, err = duit.NewDUI("torrent", nil)
 	check(err, "new dui")
 
 	bold = dui.Display.DefaultFont
