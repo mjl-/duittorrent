@@ -1,19 +1,16 @@
-DuitTorrent - simple bittorrent client developed as demo for duit, the Developer UI Toolkit
+simple bittorrent client
 
-# Why
+created as demo app for duit
 
-# License
 
-# Contact
+# todo
 
-# Todo
-
-- store state, and restore state on open. write config to $HOME/lib/duit/torrent/config, write torrents to $HOME/lib/duit/torrent/torrents
+- when adding torrent, begin downloading immediately. currently needs a click on start.
+- fix bug where torrent details are being cleared all the time.
+- store state, and restore state on open
 - allow setting per file whether you want to download it, and show progress per file
 - allow start/pause for selection of multiple torrents
 - show where files are saved, let user change location?
-- show client info somewhere
-	- peer id
 - show current overal status:
 	- peers, dht status, total download/upload rate, total download/upload size
 - deal with .torrent files too
