@@ -5,6 +5,7 @@ created as demo app for duit
 
 # todo
 
+- after latest torrent update, setting max rate causes crash, find cause
 - when adding torrent, begin downloading immediately. currently needs a click on start.
 - fix bug where torrent details are being cleared all the time.
 - store state, and restore state on open

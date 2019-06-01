@@ -14,7 +14,6 @@ import (
 	"9fans.net/go/draw"
 	"github.com/mjl-/duit"
 
-	"github.com/anacrolix/dht"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"golang.org/x/time/rate"
@@ -33,7 +32,7 @@ const (
 
 var (
 	client  *torrent.Client
-	config  *torrent.Config
+	config  *torrent.ClientConfig
 	gotInfo chan *torrent.Torrent
 
 	dui                  *duit.DUI
@@ -111,14 +110,18 @@ func updateRow(row *duit.Gridrow, updateStats bool) {
 		return
 	}
 
-	downrate := (nstats.DataBytesRead - ostats.DataBytesRead) * int64(time.Second) / int64(tickInterval)
-	uprate := (nstats.BytesWritten - ostats.DataBytesWritten) * int64(time.Second) / int64(tickInterval)
+	downrate := (nstats.BytesRead.Int64() - ostats.BytesRead.Int64()) * int64(time.Second) / int64(tickInterval)
+	uprate := (nstats.BytesWritten.Int64() - ostats.BytesWritten.Int64()) * int64(time.Second) / int64(tickInterval)
 	row.Values[colDownrate] = fmt.Sprintf("%dk", downrate/1024)
 	row.Values[colUprate] = fmt.Sprintf("%dk", uprate/1024)
 
-	done := nstats.DataBytesRead - ostats.DataBytesRead
+	done := nstats.BytesRead.Int64() - ostats.BytesRead.Int64()
 	if done <= 0 {
 		row.Values[colETA] = "∞"
+		return
+	}
+	if i == nil {
+		row.Values[colETA] = "?"
 		return
 	}
 	secs := time.Duration(float64(tickInterval)*float64(t.BytesMissing())/float64(done)) / time.Second
@@ -253,10 +256,10 @@ func updateDetails(t *torrent.Torrent) {
 		"Total peers", fmt.Sprintf("%d", ts.TotalPeers),
 		"Chunks written", fmt.Sprintf("%d", ts.ConnStats.ChunksWritten),
 		"Chunks read", fmt.Sprintf("%d", ts.ConnStats.ChunksRead),
-		"Data written", formatSize(ts.ConnStats.BytesWritten),
-		"Data read", formatSize(ts.ConnStats.BytesRead),
-		"Total written (including overhead)", formatSize(ts.ConnStats.DataBytesWritten),
-		"Total read", formatSize(ts.ConnStats.DataBytesRead),
+		"Data written", formatSize(ts.ConnStats.BytesWritten.Int64()),
+		"Data read", formatSize(ts.ConnStats.BytesRead.Int64()),
+		"Total written (including overhead)", formatSize(ts.ConnStats.BytesWritten.Int64()),
+		"Total read", formatSize(ts.ConnStats.BytesRead.Int64()),
 	)
 
 	uis = append(uis,
@@ -313,13 +316,9 @@ func main() {
 	}
 
 	var err error
-	config = &torrent.Config{
-		DHTConfig: dht.ServerConfig{
-			StartingNodes: dht.GlobalBootstrapAddrs,
-		},
-		UploadRateLimiter:   rate.NewLimiter(rate.Inf, 16*1024),
-		DownloadRateLimiter: rate.NewLimiter(rate.Inf, 16*1024),
-	}
+	config = torrent.NewDefaultClientConfig()
+	config.UploadRateLimiter = rate.NewLimiter(rate.Inf, 16*1024)
+	config.DownloadRateLimiter = rate.NewLimiter(rate.Inf, 16*1024)
 	client, err = torrent.NewClient(config)
 	check(err, "new torrent client")
 
